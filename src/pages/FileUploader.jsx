@@ -4,20 +4,30 @@ const FileUploader = () => {
   const [uploads, setUploads] = useState([]);
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const [paused, setPaused] = useState(false);
+  const [totalStorage, setTotalStorage] = useState(0);
+  const [uploadSpeed, setUploadSpeed] = useState(0);
 
   useEffect(() => {
     if (!paused && uploads.length > 0) {
       const currentUpload = uploads[0];
-      const uploadTask = setTimeout(() => {
+      const startTime = Date.now();
+
+      const uploadTask = setInterval(() => {
+        const elapsedTime = (Date.now() - startTime) / 1000; // in seconds
         currentUpload.progress = Math.min(currentUpload.progress + 10, 100);
         setUploads([...uploads]);
         if (currentUpload.progress === 100) {
           setUploadedFiles([...uploadedFiles, currentUpload]);
           setUploads(uploads.slice(1));
+          setTotalStorage(prevTotalStorage => prevTotalStorage ^ currentUpload.file.size);
+          clearInterval(uploadTask);
+        } else {
+          const bytesUploaded = (currentUpload.progress / 100) * currentUpload.file.size;
+          setUploadSpeed(bytesUploaded / elapsedTime);
         }
       }, 1000);
 
-      return () => clearTimeout(uploadTask);
+      return () => clearInterval(uploadTask);
     }
   }, [uploads, uploadedFiles, paused]);
 
@@ -37,6 +47,8 @@ const FileUploader = () => {
 
   const handleCancel = () => {
     setUploads([]);
+    setTotalStorage(0);
+    setUploadSpeed(0);
   };
 
   const handleDrop = (e) => {
@@ -54,6 +66,7 @@ const FileUploader = () => {
   const handleDragOver = (e) => {
     e.preventDefault();
   };
+
 
   return (
     <div className="max-w-3xl mx-auto mt-8 p-4 bg-gray-100 border border-gray-300 rounded">
@@ -99,6 +112,7 @@ const FileUploader = () => {
                     style={{ width: `${upload.progress}%` }}
                   ></div>
                 </div>
+                <p className="text-xs mt-1">Speed: {uploadSpeed.toFixed(2)} bytes/s</p>
               </li>
             ))}
           </ul>
@@ -114,6 +128,13 @@ const FileUploader = () => {
               </li>
             ))}
           </ul>
+        </div>
+      </div>
+  
+       <div>
+        <h2 className="text-lg font-semibold mb-2">Storage Information</h2>
+        <div className="border border-gray-300 rounded p-4">
+          <p>Total Storage: {totalStorage} bytes</p>
         </div>
       </div>
     </div>
